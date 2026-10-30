@@ -2,7 +2,9 @@ import {
   BrokerInvoiceDto,
   ClawbackPayload,
   ClawbackResponseDto,
+  EmailNotificationDto,
   FinanceSummaryDto,
+  IntegrationStatusDto,
   InvoiceStatus,
   PayoutSettlementDto,
 } from '@/types/finance';
@@ -137,3 +139,27 @@ export async function cancelClawback(id: string): Promise<ClawbackResponseDto> {
   return handleResponse<ClawbackResponseDto>(response);
 }
 
+
+export async function fetchIntegrationStatus(): Promise<IntegrationStatusDto> {
+  const response = await fetch(`${API_BASE_URL}/finance/integrations/status`);
+  return handleResponse<IntegrationStatusDto>(response);
+}
+
+export async function fetchEmailNotifications(): Promise<EmailNotificationDto[]> {
+  const response = await fetch(`${API_BASE_URL}/finance/notifications`);
+  return handleResponse<EmailNotificationDto[]>(response);
+}
+
+export async function triggerNfseEmailReminders(
+  referenceMonth = '2026-10'
+): Promise<EmailNotificationDto[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/finance/notifications/nfse-reminders?referenceMonth=${encodeURIComponent(
+      referenceMonth
+    )}`,
+    {
+      method: 'POST',
+    }
+  );
+  return handleResponse<EmailNotificationDto[]>(response);
+}

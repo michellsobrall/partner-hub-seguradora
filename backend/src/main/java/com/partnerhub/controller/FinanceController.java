@@ -2,6 +2,7 @@ package com.partnerhub.controller;
 
 import com.partnerhub.domain.entity.BrokerInvoice;
 import com.partnerhub.dto.finance.*;
+import com.partnerhub.service.EmailNotificationService;
 import com.partnerhub.service.FinanceSettlementService;
 import jakarta.validation.Valid;
 import org.springframework.http.ContentDisposition;
@@ -22,14 +23,36 @@ import java.util.UUID;
 public class FinanceController {
 
     private final FinanceSettlementService financeService;
+    private final EmailNotificationService emailNotificationService;
 
-    public FinanceController(FinanceSettlementService financeService) {
+    public FinanceController(
+            FinanceSettlementService financeService,
+            EmailNotificationService emailNotificationService
+    ) {
         this.financeService = financeService;
+        this.emailNotificationService = emailNotificationService;
     }
 
     @GetMapping("/summary")
     public ResponseEntity<FinanceSummaryDto> getSummary() {
         return ResponseEntity.ok(financeService.getSummary());
+    }
+
+    @GetMapping("/integrations/status")
+    public ResponseEntity<IntegrationStatusDto> getIntegrationsStatus() {
+        return ResponseEntity.ok(emailNotificationService.getIntegrationStatus());
+    }
+
+    @GetMapping("/notifications")
+    public ResponseEntity<List<EmailNotificationDto>> listEmailNotifications() {
+        return ResponseEntity.ok(emailNotificationService.listNotifications());
+    }
+
+    @PostMapping("/notifications/nfse-reminders")
+    public ResponseEntity<List<EmailNotificationDto>> triggerNfseDeadlineReminders(
+            @RequestParam(value = "referenceMonth", defaultValue = "2026-10") String referenceMonth
+    ) {
+        return ResponseEntity.ok(emailNotificationService.triggerNfseDeadlineReminders(referenceMonth));
     }
 
     @GetMapping("/settlements")
@@ -111,4 +134,3 @@ public class FinanceController {
         return ResponseEntity.ok(financeService.cancelClawback(id));
     }
 }
-

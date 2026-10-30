@@ -87,3 +87,28 @@ export interface ClawbackPayload {
   debitAmount: number;
 }
 
+
+export interface EmailNotificationDto {
+  id: string;
+  brokerId?: string;
+  recipientEmail: string;
+  recipientName: string;
+  templateCode: string;
+  subject: string;
+  bodyPreview: string;
+  provider: string;
+  deliveryStatus: string;
+  externalMessageId?: string;
+  sentAt: string;
+}
+
+export interface IntegrationStatusDto {
+  asaasLiveKeyConfigured: boolean;
+  asaasMode: string;
+  asaasApiUrl: string;
+  emailLiveConfigured: boolean;
+  emailProvider: string;
+  emailFromAddress: string;
+  nfseDeadlineDay: number;
+  totalEmailsDispatched: number;
+}

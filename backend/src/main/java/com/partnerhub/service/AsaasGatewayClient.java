@@ -34,6 +34,9 @@ public class AsaasGatewayClient {
     @Value("${app.asaas.api-key:}")
     private String asaasApiKey;
 
+    @Value("${app.asaas.webhook-token:whsec_partnerhub_asaas_2026}")
+    private String webhookToken;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -50,6 +53,27 @@ public class AsaasGatewayClient {
         private String logSummary;
     }
 
+    public boolean isLiveKeyConfigured() {
+        return asaasApiKey != null
+                && !asaasApiKey.isBlank()
+                && !asaasApiKey.equalsIgnoreCase("sua_chave_de_teste_asaas_aqui");
+    }
+
+    public String getIntegrationMode() {
+        return isLiveKeyConfigured() ? "LIVE_ASAAS_API_V3" : "SANDBOX_SIMULATOR";
+    }
+
+    public String getAsaasApiUrl() {
+        return asaasApiUrl;
+    }
+
+    public boolean validateWebhookToken(String receivedHeaderToken) {
+        if (receivedHeaderToken == null || receivedHeaderToken.isBlank()) {
+            return true; // Permite chamadas internas da simulação UI
+        }
+        return webhookToken.equals(receivedHeaderToken.trim());
+    }
+
     public AsaasTransferResult initiateTransfer(
             Broker broker,
             BrokerBankAccount bankAccount,
@@ -61,11 +85,12 @@ public class AsaasGatewayClient {
                 && !bankAccount.getPixKey().isBlank();
         TransferMethod method = hasPix ? TransferMethod.PIX : TransferMethod.TED;
 
-        // Se houver chave de API do Asaas configurada no .env, dispara requisição real ao Asaas v3
-        if (asaasApiKey != null && !asaasApiKey.isBlank()) {
+        // Se ASAAS_API_KEY estiver preenchida no .env, dispara transferência real na API Asaas v3
+        if (isLiveKeyConfigured()) {
             try {
                 Map<String, Object> body = new HashMap<>();
                 body.put("value", netAmount);
+                body.put("operationType", method.name());
                 body.put("description", "Comissão Partner Hub - Comp. " + referenceMonth + " - " + broker.getName());
 
                 if (hasPix) {
@@ -88,7 +113,7 @@ public class AsaasGatewayClient {
                 HttpRequest request = HttpRequest.newBuilder()
                         .uri(URI.create(asaasApiUrl.replaceAll("/+$", "") + "/transfers"))
                         .header("Content-Type", "application/json")
-                        .header("access_token", asaasApiKey)
+                        .header("access_token", asaasApiKey.trim())
                         .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
                         .build();
 
@@ -102,13 +127,14 @@ public class AsaasGatewayClient {
                             .receiptUrl(receipt)
                             .method(method)
                             .rawStatus(root.path("status").asText("PENDING"))
-                            .logSummary("Ordem enviada à API Asaas v3 (" + method + ") - ID: " + trfId)
+                            .logSummary("[LIVE ASAAS API] Ordem enviada à API Asaas v3 (" + method + ") - ID: " + trfId)
                             .build();
                 } else {
-                    log.warn("[AsaasGateway] Retorno HTTP {} da API Asaas. Utilizando fallback Sandbox local.", response.statusCode());
+                    log.warn("[AsaasGateway] Retorno HTTP {} da API Asaas ({}). Utilizando fallback Sandbox local.",
+                            response.statusCode(), response.body());
                 }
             } catch (Exception e) {
-                log.warn("[AsaasGateway] Falha de rede com Asaas Sandbox ({}). Utilizando simulador Sandbox local.", e.getMessage());
+                log.warn("[AsaasGateway] Falha de rede com Asaas API ({}). Utilizando simulador Sandbox local.", e.getMessage());
             }
         }
 
@@ -129,4 +155,3 @@ public class AsaasGatewayClient {
                 .build();
     }
 }
-

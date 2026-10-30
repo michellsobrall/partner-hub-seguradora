@@ -26,6 +26,7 @@ public class FinanceSettlementService {
     private final BrokerRepository brokerRepository;
     private final ContractPdfService contractPdfService;
     private final AsaasGatewayClient asaasGatewayClient;
+    private final EmailNotificationService emailNotificationService;
 
     public FinanceSettlementService(
             PayoutSettlementRepository settlementRepository,
@@ -34,7 +35,8 @@ public class FinanceSettlementService {
             CommissionEntryRepository commissionEntryRepository,
             BrokerRepository brokerRepository,
             ContractPdfService contractPdfService,
-            AsaasGatewayClient asaasGatewayClient
+            AsaasGatewayClient asaasGatewayClient,
+            EmailNotificationService emailNotificationService
     ) {
         this.settlementRepository = settlementRepository;
         this.invoiceRepository = invoiceRepository;
@@ -43,6 +45,7 @@ public class FinanceSettlementService {
         this.brokerRepository = brokerRepository;
         this.contractPdfService = contractPdfService;
         this.asaasGatewayClient = asaasGatewayClient;
+        this.emailNotificationService = emailNotificationService;
     }
 
     /**
@@ -382,6 +385,9 @@ public class FinanceSettlementService {
         }
 
         PayoutSettlement saved = settlementRepository.save(settlement);
+        if ("TRANSFER_COMPLETED".equalsIgnoreCase(payload.getEvent())) {
+            emailNotificationService.sendPayoutConfirmedEmail(saved);
+        }
         return toSettlementDto(saved);
     }
 

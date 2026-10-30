@@ -60,7 +60,8 @@ projeto seguradora/
 │       ├── sprint_03.md             # Gestão Financeira e Asaas
 │       ├── sprint_04.md             # RPA de Migração
 │       ├── sprint_05.md             # Portal do Corretor
-│       └── sprint_06.md             # Autenticação JWT e RBAC
+│       ├── sprint_06.md             # Autenticação JWT e RBAC
+│       └── sprint_07.md             # Asaas Live API & E-mails (SMTP/SendGrid)
 ├── backend/                         # Aplicação Spring Boot
 │   ├── src/
 │   ├── pom.xml (ou build.gradle)
@@ -178,3 +179,17 @@ projeto seguradora/
   3. Endpoints de autenticação (`/api/v1/auth/login`, `/api/v1/auth/me`, `/api/v1/auth/demo-accounts`).
   4. Tela de Login moderna em React + Tailwind CSS com atalhos de acesso rápido para homologação (`ADMIN`, `BROKER PJ` e `BROKER PF`).
   5. Isolamento de visão por perfil (RBAC): Administradores acessam todo o Backoffice; Corretores Parceiros acessam exclusivamente sua própria carteira no Portal do Corretor.
+
+---
+
+### SPRINT 07: Integrações Reais (Asaas API Key & E-mails Automáticos SMTP/SendGrid)
+- **Objetivo:** Preparar a plataforma para operação real com chave da API Asaas v3 no `.env` e disparo automático de e-mails transacionais (SMTP / SendGrid) para aprovação contratual e alerta de prazo de 3 dias da NFS-e.
+- **Entregáveis:**
+  1. Configuração completa de variáveis de ambiente no `.env`, `.env.example` e `docker-compose.yml` (`ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `SENDGRID_API_KEY`).
+  2. Evolução do `AsaasGatewayClient` com detecção automática de chave real (`LIVE_ASAAS_V3`), payload oficial de transferência Pix/TED da API Asaas v3 e validação de token de webhook.
+  3. Migração Flyway (`V7__email_notifications_and_integrations.sql`) com tabela `email_notification_logs` para auditoria de e-mails disparados.
+  4. Serviço `EmailNotificationService` com suporte híbrido a **SendGrid API v3**, **JavaMailSender (SMTP)** e fallback **Outbox Sandbox**:
+     - Disparo automático ao aprovar/homologar contrato de corretor (`CONTRACT_APPROVED`).
+     - Job agendado (`@Scheduled`) e gatilho manual para disparo de lembrete de envio de **NFS-e a 3 dias do vencimento** (`NFSE_DEADLINE_3_DAYS`) para corretores PJ com saldo apurado.
+     - Disparo automático de comprovante de liquidação Pix/TED (`ASAAS_PAYOUT_CONFIRMED`).
+  5. Painel de acompanhamento de E-mails Transacionais & Status de Integrações no módulo Financeiro do Frontend.

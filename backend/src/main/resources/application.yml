@@ -35,6 +35,21 @@ spring:
       max-file-size: 15MB
       max-request-size: 30MB
 
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
 management:
   endpoints:
     web:
@@ -53,3 +68,8 @@ app:
   asaas:
     api-url: ${ASAAS_API_URL:https://sandbox.asaas.com/api/v3}
     api-key: ${ASAAS_API_KEY:}
+    webhook-token: ${ASAAS_WEBHOOK_TOKEN:whsec_partnerhub_asaas_2026}
+  mail:
+    sendgrid-api-key: ${SENDGRID_API_KEY:}
+    from-address: ${MAIL_FROM:no-reply@partnerhub.com.br}
+    nfse-deadline-day: ${NFSE_DEADLINE_DAY:5}

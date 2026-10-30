@@ -29,15 +29,18 @@ public class BrokerOnboardingService {
     private final BrokerRepository brokerRepository;
     private final BrokerDocumentRepository documentRepository;
     private final ContractPdfService contractPdfService;
+    private final EmailNotificationService emailNotificationService;
 
     public BrokerOnboardingService(
             BrokerRepository brokerRepository,
             BrokerDocumentRepository documentRepository,
-            ContractPdfService contractPdfService
+            ContractPdfService contractPdfService,
+            EmailNotificationService emailNotificationService
     ) {
         this.brokerRepository = brokerRepository;
         this.documentRepository = documentRepository;
         this.contractPdfService = contractPdfService;
+        this.emailNotificationService = emailNotificationService;
     }
 
     @Transactional(readOnly = true)
@@ -143,6 +146,9 @@ public class BrokerOnboardingService {
         broker.setContract(contract);
 
         Broker saved = brokerRepository.save(broker);
+        if (saved.getStatus() == OnboardingStatus.APPROVED) {
+            emailNotificationService.sendContractApprovedEmail(saved);
+        }
         return toResponseDto(saved);
     }
 
@@ -226,6 +232,9 @@ public class BrokerOnboardingService {
         }
 
         Broker saved = brokerRepository.save(broker);
+        if (saved.getStatus() == OnboardingStatus.APPROVED) {
+            emailNotificationService.sendContractApprovedEmail(saved);
+        }
         return toResponseDto(saved);
     }
 
@@ -237,6 +246,9 @@ public class BrokerOnboardingService {
         broker.setReviewedAt(Instant.now());
 
         Broker saved = brokerRepository.save(broker);
+        if (saved.getStatus() == OnboardingStatus.APPROVED) {
+            emailNotificationService.sendContractApprovedEmail(saved);
+        }
         return toResponseDto(saved);
     }
 

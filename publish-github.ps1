@@ -24,14 +24,14 @@ if (-not (Test-Path ".git")) {
 git branch -M main
 
 # 3. Adiciona os arquivos respeitando o .gitignore (.env locais ignorados)
-Write-Host "[2/4] Adicionando arquivos das Sprints 00 a 06..." -ForegroundColor Yellow
+Write-Host "[2/4] Adicionando arquivos das Sprints 00 a 07..." -ForegroundColor Yellow
 git add .
 
 # 4. Cria o commit consolidado se houver alterações pendentes
 $status = git status --porcelain
 if ($status) {
-    Write-Host "[3/4] Criando commit da release v1.6.0..." -ForegroundColor Yellow
-    git commit -m "feat: release Partner Hub v1.6.0 (Sprints 00 a 06 completas com JWT e RBAC)"
+    Write-Host "[3/4] Criando commit da release v1.7.0..." -ForegroundColor Yellow
+    git commit -m "feat: release Partner Hub v1.7.0 (Sprints 00 a 07 - Asaas Live API e E-mails SMTP/SendGrid)"
     Write-Host "Commit criado com sucesso!" -ForegroundColor Green
 } else {
     Write-Host "[3/4] Nenhuma alteração pendente para commit." -ForegroundColor Green

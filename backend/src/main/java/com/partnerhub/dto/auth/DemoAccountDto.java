@@ -1,0 +1,23 @@
+package com.partnerhub.dto.auth;
+
+import com.partnerhub.domain.enums.UserRole;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class DemoAccountDto {
+    private String label;
+    private String description;
+    private String email;
+    private String password;
+    private UserRole role;
+    private UUID brokerId;
+}
+

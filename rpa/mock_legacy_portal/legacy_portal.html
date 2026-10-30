@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sistema Legado SGP-Saúde v4.2 (1998-2019)</title>
+</head>
+<body>
+  <!-- Tela de Login Legada -->
+  <div id="login-container">
+    <h2>Autenticação SGP-Saúde Legado</h2>
+    <form id="legacy-login-form" onsubmit="event.preventDefault(); document.getElementById('dashboard-container').style.display='block';">
+      <input id="username" name="username" type="text" value="usuario_automacao" />
+      <input id="password" name="password" type="password" value="senha_segura" />
+      <button id="btn-login" type="submit">Entrar no Sistema</button>
+    </form>
+  </div>
+
+  <!-- Painel de Dados Legados (Com sujeiras e duplicatas para higienização Pandas) -->
+  <div id="dashboard-container" style="display:block;">
+    <span id="session-badge" data-authenticated="true">SESSAO_ATIVA_SGP</span>
+
+    <h3>Base Legada de Corretores Parceiros</h3>
+    <table id="legacy-brokers-table">
+      <thead>
+        <tr>
+          <th>Tipo</th>
+          <th>Razao_Nome</th>
+          <th>Fantasia</th>
+          <th>Doc_Bruto</th>
+          <th>Email</th>
+          <th>Telefone</th>
+          <th>SUSEP</th>
+          <th>Banco_Cod</th>
+          <th>Banco_Nome</th>
+          <th>Agencia</th>
+          <th>Conta</th>
+          <th>Pix_Tipo</th>
+          <th>Pix_Chave</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="broker-row">
+          <td class="col-type">PJ</td>
+          <td class="col-name">   Atlas Corretora e Consultoria de Saúde S.A.  </td>
+          <td class="col-trade">Atlas Saúde Corporativa</td>
+          <td class="col-doc">45.781.902/0001-63</td>
+          <td class="col-email">FINANCEIRO@ATLASSAUDE.COM.BR</td>
+          <td class="col-phone">(11) 99123-4567</td>
+          <td class="col-susep">202088712</td>
+          <td class="col-bank-code">033</td>
+          <td class="col-bank-name">Banco Santander</td>
+          <td class="col-agency">2190</td>
+          <td class="col-account">13004921-8</td>
+          <td class="col-pix-type">CNPJ</td>
+          <td class="col-pix-key">45.781.902/0001-63</td>
+        </tr>
+        <!-- Linha Duplicada no Legado (deve ser removida pelo Pandas) -->
+        <tr class="broker-row">
+          <td class="col-type">PJ</td>
+          <td class="col-name">Atlas Corretora e Consultoria de Saúde S.A.</td>
+          <td class="col-trade">Atlas Saúde Corporativa</td>
+          <td class="col-doc">45781902000163</td>
+          <td class="col-email">financeiro@atlassaude.com.br</td>
+          <td class="col-phone">11991234567</td>
+          <td class="col-susep">202088712</td>
+          <td class="col-bank-code">033</td>
+          <td class="col-bank-name">Banco Santander</td>
+          <td class="col-agency">2190</td>
+          <td class="col-account">13004921-8</td>
+          <td class="col-pix-type">CNPJ</td>
+          <td class="col-pix-key">45781902000163</td>
+        </tr>
+        <tr class="broker-row">
+          <td class="col-type">PF</td>
+          <td class="col-name">   Henrique Vasconcelos Moura </td>
+          <td class="col-trade"></td>
+          <td class="col-doc">812.440.918-22</td>
+          <td class="col-email">henrique.moura@parceirosaude.com.br</td>
+          <td class="col-phone">+55 (31) 98412-9090</td>
+          <td class="col-susep">104928173</td>
+          <td class="col-bank-code">077</td>
+          <td class="col-bank-name">Banco Inter</td>
+          <td class="col-agency">0001</td>
+          <td class="col-account">7788123-0</td>
+          <td class="col-pix-type">CPF</td>
+          <td class="col-pix-key">812.440.918-22</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Tabelas de Vigência e Regras de Comissionamento Legadas</h3>
+    <table id="legacy-rules-table">
+      <thead>
+        <tr>
+          <th>Codigo</th>
+          <th>Operadora</th>
+          <th>Produto</th>
+          <th>Agenciamento_Bruto</th>
+          <th>Parcelas_Agenc</th>
+          <th>Vitalicio_Bruto</th>
+          <th>Vigencia_Inicio</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="rule-row">
+          <td class="col-code"> reg-porto-pro-05 </td>
+          <td class="col-operator">Porto Saúde</td>
+          <td class="col-product">Porto Pro Empresarial PME</td>
+          <td class="col-agency">R$ 220,00 %</td>
+          <td class="col-installments">1ª Parcela</td>
+          <td class="col-recurring">4,80 % ao mês</td>
+          <td class="col-effective">01/01/2026</td>
+        </tr>
+        <!-- Regra duplicada no legado -->
+        <tr class="rule-row">
+          <td class="col-code">REG-PORTO-PRO-05</td>
+          <td class="col-operator">Porto Saúde</td>
+          <td class="col-product">Porto Pro Empresarial PME</td>
+          <td class="col-agency">220.00%</td>
+          <td class="col-installments">1</td>
+          <td class="col-recurring">4.80%</td>
+          <td class="col-effective">2026-01-01</td>
+        </tr>
+        <tr class="rule-row">
+          <td class="col-code"> reg-omint-corp-06 </td>
+          <td class="col-operator">Omint</td>
+          <td class="col-product">Omint Corporate Premium</td>
+          <td class="col-agency">250,00 %</td>
+          <td class="col-installments">2 Parcelas</td>
+          <td class="col-recurring">5,50 %</td>
+          <td class="col-effective">01/02/2026</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
+

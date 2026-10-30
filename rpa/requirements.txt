@@ -1,0 +1,10 @@
+# =======================================================
+# PARTNER HUB - RPA DEPENDENCIES (Python 3.11+)
+# =======================================================
+playwright==1.44.0
+pandas==2.2.2
+requests==2.32.3
+python-dotenv==1.0.1
+pydantic==2.7.2
+tenacity==8.3.0
+

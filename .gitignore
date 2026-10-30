@@ -1,0 +1,34 @@
+# Logs e arquivos de sistema
+*.log
+*.DS_Store
+Thumbs.db
+
+# Variáveis de ambiente (Segurança)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Java / Spring Boot
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/.idea/
+backend/*.iml
+backend/.project
+backend/.classpath
+backend/.settings/
+backend/bin/
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.idea/
+frontend/*.log*
+
+# Python / RPA
+rpa/__pycache__/
+rpa/*/__pycache__/
+rpa/*.pyc
+rpa/.venv/
+rpa/venv/
+rpa/env/

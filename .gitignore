@@ -3,11 +3,14 @@
 *.DS_Store
 Thumbs.db
 
-# Variáveis de ambiente (Segurança)
+# Variáveis de ambiente em todas as camadas (Segurança 12-Factor App)
 .env
+**/.env
 .env.local
+**/.env.local
 .env.*.local
 !.env.example
+!**/.env.example
 
 # Java / Spring Boot
 backend/target/
@@ -32,3 +35,4 @@ rpa/*.pyc
 rpa/.venv/
 rpa/venv/
 rpa/env/
+rpa/output/

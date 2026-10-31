@@ -38,6 +38,11 @@ if ($status) {
 }
 
 # 5. Conecta ao repositório remoto do GitHub e envia (Push)
+$existingRemote = git remote
+if ([string]::IsNullOrWhiteSpace($RepoUrl) -and ($existingRemote -contains "origin")) {
+    $RepoUrl = (git remote get-url origin).Trim()
+}
+
 if ([string]::IsNullOrWhiteSpace($RepoUrl)) {
     # Se o usuário tiver o GitHub CLI (gh) instalado e autenticado, oferece criação automática
     if (Get-Command "gh" -ErrorAction SilentlyContinue) {

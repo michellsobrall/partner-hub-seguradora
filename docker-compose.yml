@@ -54,11 +54,11 @@ services:
       ASAAS_API_KEY: ${ASAAS_API_KEY:-}
       ASAAS_WEBHOOK_TOKEN: ${ASAAS_WEBHOOK_TOKEN:-whsec_partnerhub_asaas_2026}
       SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
-      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_HOST: ${MAIL_HOST:-cloud21.mailgrid.net.br}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-      MAIL_FROM: ${MAIL_FROM:-no-reply@partnerhub.com.br}
+      MAIL_FROM: ${MAIL_FROM:-sender@forma.dev.br}
       NFSE_DEADLINE_DAY: ${NFSE_DEADLINE_DAY:-5}
     depends_on:
       postgres:

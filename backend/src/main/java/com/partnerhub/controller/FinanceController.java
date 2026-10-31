@@ -2,6 +2,7 @@ package com.partnerhub.controller;
 
 import com.partnerhub.domain.entity.BrokerInvoice;
 import com.partnerhub.dto.finance.*;
+import com.partnerhub.service.AsaasGatewayClient;
 import com.partnerhub.service.EmailNotificationService;
 import com.partnerhub.service.FinanceSettlementService;
 import jakarta.validation.Valid;
@@ -16,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -24,13 +26,16 @@ public class FinanceController {
 
     private final FinanceSettlementService financeService;
     private final EmailNotificationService emailNotificationService;
+    private final AsaasGatewayClient asaasGatewayClient;
 
     public FinanceController(
             FinanceSettlementService financeService,
-            EmailNotificationService emailNotificationService
+            EmailNotificationService emailNotificationService,
+            AsaasGatewayClient asaasGatewayClient
     ) {
         this.financeService = financeService;
         this.emailNotificationService = emailNotificationService;
+        this.asaasGatewayClient = asaasGatewayClient;
     }
 
     @GetMapping("/summary")
@@ -43,9 +48,37 @@ public class FinanceController {
         return ResponseEntity.ok(emailNotificationService.getIntegrationStatus());
     }
 
+    @PostMapping("/integrations/config")
+    public ResponseEntity<IntegrationStatusDto> updateIntegrationsConfig(
+            @RequestBody IntegrationConfigRequestDto request
+    ) {
+        return ResponseEntity.ok(emailNotificationService.updateRuntimeIntegrations(request));
+    }
+
     @GetMapping("/notifications")
     public ResponseEntity<List<EmailNotificationDto>> listEmailNotifications() {
         return ResponseEntity.ok(emailNotificationService.listNotifications());
+    }
+
+    @PostMapping("/notifications/{id}/resend")
+    public ResponseEntity<EmailNotificationDto> resendEmailNotification(@PathVariable UUID id) {
+        return ResponseEntity.ok(emailNotificationService.resendNotification(id));
+    }
+
+    @PostMapping("/notifications/test")
+    public ResponseEntity<EmailNotificationDto> sendTestEmail(
+            @RequestParam(value = "recipientEmail", defaultValue = "michel.silva@grupohermanos.com.br") String recipientEmail
+    ) {
+        return ResponseEntity.ok(emailNotificationService.sendTestEmail(recipientEmail));
+    }
+
+    @PostMapping("/asaas/test")
+    public ResponseEntity<Map<String, Object>> testAsaasSandboxPix(
+            @RequestParam(value = "pixKey", defaultValue = "michel.silva@grupohermanos.com.br") String pixKey,
+            @RequestParam(value = "pixKeyType", defaultValue = "EMAIL") String pixKeyType,
+            @RequestParam(value = "amount", defaultValue = "10.00") BigDecimal amount
+    ) {
+        return ResponseEntity.ok(asaasGatewayClient.testSandboxPixTransfer(pixKey, pixKeyType, amount));
     }
 
     @PostMapping("/notifications/nfse-reminders")

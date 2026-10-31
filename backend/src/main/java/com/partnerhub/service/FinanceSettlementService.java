@@ -347,23 +347,25 @@ public class FinanceSettlementService {
     }
 
     /**
-     * Recebe notificações de Webhook do Asaas (TRANSFER_COMPLETED ou TRANSFER_FAILED).
+     * Recebe notificações de Webhook do Asaas (TRANSFER_COMPLETED/TRANSFER_DONE ou TRANSFER_FAILED/TRANSFER_CANCELLED).
      */
     @Transactional
     public PayoutSettlementDto processAsaasWebhook(AsaasWebhookPayloadDto payload) {
-        PayoutSettlement settlement = settlementRepository.findByAsaasTransferId(payload.getAsaasTransferId())
+        String transferId = payload.resolveTransferId();
+        PayoutSettlement settlement = settlementRepository.findByAsaasTransferId(transferId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Transferência Asaas não localizada: " + payload.getAsaasTransferId()
+                        "Transferência Asaas não localizada: " + transferId
                 ));
 
         String existingLog = settlement.getWebhookEventLog() != null ? settlement.getWebhookEventLog() + "\n" : "";
+        String evt = payload.getEvent() != null ? payload.getEvent().toUpperCase() : "";
 
-        if ("TRANSFER_COMPLETED".equalsIgnoreCase(payload.getEvent())) {
+        if ("TRANSFER_COMPLETED".equals(evt) || "TRANSFER_DONE".equals(evt)) {
             settlement.setStatus(PayoutStatus.PAID);
             settlement.setPaidAt(Instant.now());
             settlement.setWebhookEventLog(
-                    existingLog + "[" + Instant.now() + "] WEBHOOK TRANSFER_COMPLETED: Liquidação Pix/TED confirmada pelo banco."
+                    existingLog + "[" + Instant.now() + "] WEBHOOK " + evt + ": Liquidação Pix/TED confirmada pelo banco."
             );
 
             // Marca os clawbacks da competência como DEDUCTED
@@ -376,16 +378,17 @@ public class FinanceSettlementService {
                 cb.setStatus(ClawbackStatus.DEDUCTED);
                 clawbackRepository.save(cb);
             }
-        } else if ("TRANSFER_FAILED".equalsIgnoreCase(payload.getEvent())) {
+        } else if ("TRANSFER_FAILED".equals(evt) || "TRANSFER_CANCELLED".equals(evt)) {
             settlement.setStatus(PayoutStatus.FAILED);
+            String reason = payload.resolveFailureReason();
             settlement.setWebhookEventLog(
-                    existingLog + "[" + Instant.now() + "] WEBHOOK TRANSFER_FAILED: "
-                            + (payload.getFailureReason() != null ? payload.getFailureReason() : "Falha bancária informada pelo Asaas.")
+                    existingLog + "[" + Instant.now() + "] WEBHOOK " + evt + ": "
+                            + (reason != null ? reason : "Falha bancária informada pelo Asaas.")
             );
         }
 
         PayoutSettlement saved = settlementRepository.save(settlement);
-        if ("TRANSFER_COMPLETED".equalsIgnoreCase(payload.getEvent())) {
+        if ("TRANSFER_COMPLETED".equals(evt) || "TRANSFER_DONE".equals(evt)) {
             emailNotificationService.sendPayoutConfirmedEmail(saved);
         }
         return toSettlementDto(saved);

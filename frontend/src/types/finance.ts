@@ -108,7 +108,22 @@ export interface IntegrationStatusDto {
   asaasApiUrl: string;
   emailLiveConfigured: boolean;
   emailProvider: string;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUsername?: string;
   emailFromAddress: string;
   nfseDeadlineDay: number;
   totalEmailsDispatched: number;
+}
+
+export interface IntegrationConfigPayload {
+  asaasApiUrl?: string;
+  asaasApiKey?: string;
+  sendgridApiKey?: string;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUsername?: string;
+  smtpPassword?: string;
+  emailFromAddress?: string;
+  nfseDeadlineDay?: number;
 }

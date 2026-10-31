@@ -36,7 +36,7 @@ spring:
       max-request-size: 30MB
 
   mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
+    host: ${MAIL_HOST:cloud21.mailgrid.net.br}
     port: ${MAIL_PORT:587}
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
@@ -71,5 +71,5 @@ app:
     webhook-token: ${ASAAS_WEBHOOK_TOKEN:whsec_partnerhub_asaas_2026}
   mail:
     sendgrid-api-key: ${SENDGRID_API_KEY:}
-    from-address: ${MAIL_FROM:no-reply@partnerhub.com.br}
+    from-address: ${MAIL_FROM:sender@forma.dev.br}
     nfse-deadline-day: ${NFSE_DEADLINE_DAY:5}

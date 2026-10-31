@@ -37,11 +37,15 @@ import {
   fetchInvoices,
   fetchSettlements,
   getInvoiceDownloadUrl,
+  resendEmailNotification,
   reviewBrokerInvoice,
+  sendTestEmailNotification,
   simulateAsaasWebhook,
+  testAsaasSandboxPix,
   triggerBatchPayout,
   triggerNfseEmailReminders,
   triggerSinglePayout,
+  updateIntegrationConfig,
   uploadBrokerInvoice,
 } from '@/services/financeApi';
 
@@ -90,6 +94,24 @@ export const FinanceModule: React.FC = () => {
   );
   const [savingClawback, setSavingClawback] = useState(false);
 
+  // Runtime Integration Config Form state
+  const [cfgAsaasUrl, setCfgAsaasUrl] = useState('https://sandbox.asaas.com/api/v3');
+  const [cfgAsaasKey, setCfgAsaasKey] = useState('');
+  const [cfgSendgridKey, setCfgSendgridKey] = useState('');
+  const [cfgSmtpHost, setCfgSmtpHost] = useState('cloud21.mailgrid.net.br');
+  const [cfgSmtpPort, setCfgSmtpPort] = useState('587');
+  const [cfgSmtpUser, setCfgSmtpUser] = useState('hermanosti@hermanosti.com.br');
+  const [cfgSmtpPass, setCfgSmtpPass] = useState('');
+  const [cfgFromEmail, setCfgFromEmail] = useState('sender@forma.dev.br');
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [testRecipientEmail, setTestRecipientEmail] = useState(
+    'michel.silva@grupohermanos.com.br'
+  );
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+  const [testPixKey, setTestPixKey] = useState('michel.silva@grupohermanos.com.br');
+  const [testPixKeyType, setTestPixKeyType] = useState('EMAIL');
+  const [testingAsaasPix, setTestingAsaasPix] = useState(false);
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 4500);
@@ -115,6 +137,11 @@ export const FinanceModule: React.FC = () => {
       setBrokers(brokerList);
       setIntegrationStatus(intStatus);
       setEmailLogs(mailList);
+      if (intStatus.smtpHost) setCfgSmtpHost(intStatus.smtpHost);
+      if (intStatus.smtpPort) setCfgSmtpPort(String(intStatus.smtpPort));
+      if (intStatus.smtpUsername) setCfgSmtpUser(intStatus.smtpUsername);
+      if (intStatus.emailFromAddress) setCfgFromEmail(intStatus.emailFromAddress);
+      if (intStatus.asaasApiUrl) setCfgAsaasUrl(intStatus.asaasApiUrl);
 
       if (!invBrokerId && brokerList.length > 0) {
         const firstPj = brokerList.find((b) => b.personType === 'PJ') || brokerList[0];
@@ -273,6 +300,61 @@ export const FinanceModule: React.FC = () => {
       alert(err instanceof Error ? err.message : 'Erro ao disparar lembretes de NFS-e');
     } finally {
       setProcessingAction(false);
+    }
+  };
+
+  const handleSaveIntegrationsConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingConfig(true);
+    try {
+      const updated = await updateIntegrationConfig({
+        asaasApiUrl: cfgAsaasUrl,
+        asaasApiKey: cfgAsaasKey,
+        sendgridApiKey: cfgSendgridKey,
+        smtpHost: cfgSmtpHost,
+        smtpPort: Number(cfgSmtpPort) || 587,
+        smtpUsername: cfgSmtpUser,
+        smtpPassword: cfgSmtpPass,
+        emailFromAddress: cfgFromEmail,
+      });
+      setIntegrationStatus(updated);
+      showToast('Chaves do Asaas e configurações de E-mail ativadas em tempo real!');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao salvar configurações');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const handleSendTestEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testRecipientEmail) return;
+    setSendingTestEmail(true);
+    try {
+      const res = await sendTestEmailNotification(testRecipientEmail);
+      showToast(
+        `Teste enviado para ${res.recipientEmail} -> Status: ${res.deliveryStatus}`
+      );
+      await loadAll();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao enviar e-mail de teste');
+    } finally {
+      setSendingTestEmail(false);
+    }
+  };
+
+  const handleTestAsaasSandboxPix = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testPixKey) return;
+    setTestingAsaasPix(true);
+    try {
+      const res = await testAsaasSandboxPix(testPixKey, testPixKeyType, 10.0);
+      showToast(res.message);
+      await loadAll();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao testar Pix Asaas Sandbox');
+    } finally {
+      setTestingAsaasPix(false);
     }
   };
 
@@ -1051,6 +1133,226 @@ export const FinanceModule: React.FC = () => {
             </div>
           </div>
 
+          {/* Barra Rápida de Disparo de Pix de Teste no Asaas Sandbox */}
+          <form
+            onSubmit={handleTestAsaasSandboxPix}
+            className="bg-emerald-50/70 p-5 rounded-2xl border border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+          >
+            <div>
+              <h3 className="text-sm font-bold text-emerald-950 flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-emerald-600" />
+                Testar Transferência Pix Real no Asaas Sandbox (R$ 10,00)
+              </h3>
+              <p className="text-xs text-emerald-800/80 mt-0.5">
+                Consulta o saldo da sua conta em <code className="font-mono">sandbox.asaas.com</code> e dispara uma ordem Pix via <code className="font-mono">POST /v3/transfers</code>.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <select
+                value={testPixKeyType}
+                onChange={(e) => setTestPixKeyType(e.target.value)}
+                className="px-3 py-2 text-xs rounded-xl border border-emerald-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              >
+                <option value="EMAIL">Chave E-mail</option>
+                <option value="CPF">Chave CPF</option>
+                <option value="CNPJ">Chave CNPJ</option>
+                <option value="PHONE">Chave Telefone</option>
+                <option value="EVP">Chave Aleatória (EVP)</option>
+              </select>
+              <input
+                type="text"
+                required
+                value={testPixKey}
+                onChange={(e) => setTestPixKey(e.target.value)}
+                placeholder="Informe a chave Pix de destino"
+                className="w-56 px-3.5 py-2 text-xs rounded-xl border border-emerald-200 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              />
+              <button
+                type="submit"
+                disabled={testingAsaasPix}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 shadow-sm"
+              >
+                <Send className="w-3.5 h-3.5" />
+                {testingAsaasPix ? 'Disparando Pix...' : 'Testar Pix Asaas Sandbox'}
+              </button>
+            </div>
+          </form>
+
+          {/* Barra Rápida de Envio de E-mail de Teste */}
+          <form
+            onSubmit={handleSendTestEmail}
+            className="bg-indigo-50/70 p-5 rounded-2xl border border-indigo-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+          >
+            <div>
+              <h3 className="text-sm font-bold text-indigo-950 flex items-center gap-2">
+                <Mail className="w-4 h-4 text-indigo-600" />
+                Disparar E-mail de Teste Agora (Validação SMTP Mailgrid / SendGrid)
+              </h3>
+              <p className="text-xs text-indigo-800/80 mt-0.5">
+                Informe qualquer endereço de e-mail abaixo para testar a entrega imediata e visualizar o diagnóstico SMTP na tabela.
+              </p>
+            </div>
+            <div className="flex items-center gap-2.5 shrink-0">
+              <input
+                type="email"
+                required
+                value={testRecipientEmail}
+                onChange={(e) => setTestRecipientEmail(e.target.value)}
+                placeholder="destinatario@dominio.com.br"
+                className="w-64 px-3.5 py-2 text-xs rounded-xl border border-indigo-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              />
+              <button
+                type="submit"
+                disabled={sendingTestEmail}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 shadow-sm"
+              >
+                <Send className="w-3.5 h-3.5" />
+                {sendingTestEmail ? 'Enviando Teste...' : 'Enviar E-mail de Teste'}
+              </button>
+            </div>
+          </form>
+
+          {/* Formulário Interativo para Configurar Chaves pela Interface Web */}
+          <form
+            onSubmit={handleSaveIntegrationsConfig}
+            className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-subtle space-y-5"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Configurar Chave Asaas & Credenciais de E-mail (SMTP / SendGrid)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Você pode configurar aqui na tela (ativação imediata) ou editar o arquivo{' '}
+                  <code className="font-mono text-indigo-700 font-semibold">
+                    C:\Users\ADMIN\projeto seguradora\.env
+                  </code>
+                </p>
+              </div>
+              <button
+                type="submit"
+                disabled={savingConfig}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 shadow-sm shrink-0"
+              >
+                <Check className="w-3.5 h-3.5" />
+                {savingConfig
+                  ? 'Salvando...'
+                  : 'Salvar & Ativar Chaves Agora'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Chave da API Asaas (ASAAS_API_KEY)
+                </label>
+                <input
+                  type="password"
+                  value={cfgAsaasKey}
+                  onChange={(e) => setCfgAsaasKey(e.target.value)}
+                  placeholder="Ex.: $aact_YTU5YTE0M2M2N2I4... (Deixe em branco para usar Modo Sandbox)"
+                  className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Ambiente Asaas (ASAAS_API_URL)
+                </label>
+                <select
+                  value={cfgAsaasUrl}
+                  onChange={(e) => setCfgAsaasUrl(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                >
+                  <option value="https://sandbox.asaas.com/api/v3">
+                    Sandbox (https://sandbox.asaas.com/api/v3)
+                  </option>
+                  <option value="https://api.asaas.com/v3">
+                    Produção (https://api.asaas.com/v3)
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Chave SendGrid API (Opcional)
+                </label>
+                <input
+                  type="password"
+                  value={cfgSendgridKey}
+                  onChange={(e) => setCfgSendgridKey(e.target.value)}
+                  placeholder="Ex.: SG.xxxxxxxxxxxx"
+                  className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Usuário SMTP (Ex.: seu.email@gmail.com)
+                </label>
+                <input
+                  type="text"
+                  value={cfgSmtpUser}
+                  onChange={(e) => setCfgSmtpUser(e.target.value)}
+                  placeholder="seu.email@gmail.com"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Senha de App SMTP (MAIL_PASSWORD)
+                </label>
+                <input
+                  type="password"
+                  value={cfgSmtpPass}
+                  onChange={(e) => setCfgSmtpPass(e.target.value)}
+                  placeholder="Senha de App de 16 dígitos"
+                  className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Servidor SMTP (MAIL_HOST)
+                </label>
+                <input
+                  type="text"
+                  value={cfgSmtpHost}
+                  onChange={(e) => setCfgSmtpHost(e.target.value)}
+                  placeholder="smtp.gmail.com"
+                  className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Porta SMTP (MAIL_PORT)
+                </label>
+                <input
+                  type="number"
+                  value={cfgSmtpPort}
+                  onChange={(e) => setCfgSmtpPort(e.target.value)}
+                  placeholder="587"
+                  className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  E-mail Remetente (MAIL_FROM)
+                </label>
+                <input
+                  type="email"
+                  value={cfgFromEmail}
+                  onChange={(e) => setCfgFromEmail(e.target.value)}
+                  placeholder="no-reply@partnerhub.com.br"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+            </div>
+          </form>
+
           {/* Lista Auditável de E-mails Disparados */}
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-subtle overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -1097,14 +1399,39 @@ export const FinanceModule: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="flex flex-col sm:items-end gap-1 shrink-0 text-xs">
+                  <div className="flex flex-col sm:items-end gap-2 shrink-0 text-xs">
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/70">
                       <CheckCircle2 className="w-3 h-3" />
                       {item.deliveryStatus} ({item.provider})
                     </span>
-                    <span className="font-mono text-[11px] text-slate-400">
-                      {new Date(item.sentAt).toLocaleString('pt-BR')}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[11px] text-slate-400">
+                        {new Date(item.sentAt).toLocaleString('pt-BR')}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={processingAction}
+                        onClick={async () => {
+                          setProcessingAction(true);
+                          try {
+                            const res = await resendEmailNotification(item.id);
+                            showToast(
+                              `E-mail reenviado para ${res.recipientEmail} -> Status: ${res.deliveryStatus}`
+                            );
+                            await loadAll();
+                          } catch (err) {
+                            alert(
+                              err instanceof Error ? err.message : 'Erro ao reenviar e-mail'
+                            );
+                          } finally {
+                            setProcessingAction(false);
+                          }
+                        }}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200/60 transition-colors"
+                      >
+                        Reenviar por SMTP Agora
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

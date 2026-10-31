@@ -15,8 +15,10 @@ public class IntegrationStatusDto {
     private String asaasApiUrl;
     private boolean emailLiveConfigured;
     private String emailProvider;
+    private String smtpHost;
+    private int smtpPort;
+    private String smtpUsername;
     private String emailFromAddress;
     private int nfseDeadlineDay;
     private long totalEmailsDispatched;
 }
-

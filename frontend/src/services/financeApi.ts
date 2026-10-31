@@ -4,6 +4,7 @@ import {
   ClawbackResponseDto,
   EmailNotificationDto,
   FinanceSummaryDto,
+  IntegrationConfigPayload,
   IntegrationStatusDto,
   InvoiceStatus,
   PayoutSettlementDto,
@@ -162,4 +163,62 @@ export async function triggerNfseEmailReminders(
     }
   );
   return handleResponse<EmailNotificationDto[]>(response);
+}
+
+export async function updateIntegrationConfig(
+  payload: IntegrationConfigPayload
+): Promise<IntegrationStatusDto> {
+  const response = await fetch(`${API_BASE_URL}/finance/integrations/config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<IntegrationStatusDto>(response);
+}
+
+export async function resendEmailNotification(
+  notificationId: string
+): Promise<EmailNotificationDto> {
+  const response = await fetch(
+    `${API_BASE_URL}/finance/notifications/${notificationId}/resend`,
+    {
+      method: 'POST',
+    }
+  );
+  return handleResponse<EmailNotificationDto>(response);
+}
+
+export async function sendTestEmailNotification(
+  recipientEmail: string
+): Promise<EmailNotificationDto> {
+  const response = await fetch(
+    `${API_BASE_URL}/finance/notifications/test?recipientEmail=${encodeURIComponent(
+      recipientEmail
+    )}`,
+    {
+      method: 'POST',
+    }
+  );
+  return handleResponse<EmailNotificationDto>(response);
+}
+
+export async function testAsaasSandboxPix(
+  pixKey: string,
+  pixKeyType = 'EMAIL',
+  amount = 10
+): Promise<{
+  status: string;
+  message: string;
+  sandboxBalance?: number;
+  transferId?: string;
+}> {
+  const response = await fetch(
+    `${API_BASE_URL}/finance/asaas/test?pixKey=${encodeURIComponent(
+      pixKey
+    )}&pixKeyType=${encodeURIComponent(pixKeyType)}&amount=${amount}`,
+    {
+      method: 'POST',
+    }
+  );
+  return handleResponse(response);
 }

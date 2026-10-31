@@ -42,6 +42,12 @@ public class EmailNotificationService {
     @Value("${app.mail.sendgrid-api-key:}")
     private String sendgridApiKey;
 
+    @Value("${spring.mail.host:smtp.gmail.com}")
+    private String smtpHost;
+
+    @Value("${spring.mail.port:587}")
+    private int smtpPort;
+
     @Value("${spring.mail.username:}")
     private String smtpUsername;
 
@@ -72,14 +78,45 @@ public class EmailNotificationService {
             CommissionEntryRepository commissionEntryRepository,
             BrokerInvoiceRepository invoiceRepository,
             AsaasGatewayClient asaasGatewayClient,
-            @Autowired(required = false) JavaMailSender mailSender
+            Optional<JavaMailSender> mailSender
     ) {
         this.logRepository = logRepository;
         this.brokerRepository = brokerRepository;
         this.commissionEntryRepository = commissionEntryRepository;
         this.invoiceRepository = invoiceRepository;
         this.asaasGatewayClient = asaasGatewayClient;
-        this.mailSender = mailSender;
+        this.mailSender = mailSender.orElse(null);
+    }
+
+    public IntegrationStatusDto updateRuntimeIntegrations(com.partnerhub.dto.finance.IntegrationConfigRequestDto req) {
+        if (req.getAsaasApiUrl() != null && !req.getAsaasApiUrl().isBlank()) {
+            asaasGatewayClient.updateRuntimeConfig(req.getAsaasApiUrl(), null);
+        }
+        if (req.getAsaasApiKey() != null && !req.getAsaasApiKey().isBlank()) {
+            asaasGatewayClient.updateRuntimeConfig(req.getAsaasApiUrl(), req.getAsaasApiKey());
+        }
+        if (req.getSendgridApiKey() != null && !req.getSendgridApiKey().isBlank()) {
+            this.sendgridApiKey = req.getSendgridApiKey().trim();
+        }
+        if (req.getSmtpHost() != null && !req.getSmtpHost().isBlank()) {
+            this.smtpHost = req.getSmtpHost().trim();
+        }
+        if (req.getSmtpPort() != null && req.getSmtpPort() > 0) {
+            this.smtpPort = req.getSmtpPort();
+        }
+        if (req.getSmtpUsername() != null && !req.getSmtpUsername().isBlank()) {
+            this.smtpUsername = req.getSmtpUsername().trim();
+        }
+        if (req.getSmtpPassword() != null && !req.getSmtpPassword().isBlank()) {
+            this.smtpPassword = req.getSmtpPassword().trim();
+        }
+        if (req.getEmailFromAddress() != null && !req.getEmailFromAddress().isBlank()) {
+            this.fromAddress = req.getEmailFromAddress().trim();
+        }
+        if (req.getNfseDeadlineDay() != null && req.getNfseDeadlineDay() >= 1 && req.getNfseDeadlineDay() <= 28) {
+            this.nfseDeadlineDay = req.getNfseDeadlineDay();
+        }
+        return getIntegrationStatus();
     }
 
     public boolean isSendGridConfigured() {
@@ -109,6 +146,9 @@ public class EmailNotificationService {
                 .asaasApiUrl(asaasGatewayClient.getAsaasApiUrl())
                 .emailLiveConfigured(isSendGridConfigured() || isSmtpConfigured())
                 .emailProvider(getActiveEmailProvider())
+                .smtpHost(smtpHost)
+                .smtpPort(smtpPort)
+                .smtpUsername(smtpUsername)
                 .emailFromAddress(fromAddress)
                 .nfseDeadlineDay(nfseDeadlineDay)
                 .totalEmailsDispatched(logRepository.count())
@@ -120,6 +160,63 @@ public class EmailNotificationService {
         return logRepository.findAllByOrderBySentAtDesc().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public EmailNotificationDto resendNotification(UUID notificationId) {
+        EmailNotificationLog existing = logRepository.findById(notificationId)
+                .orElseThrow(() -> new IllegalArgumentException("Registro de e-mail não encontrado."));
+
+        String htmlBody = "<div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;'>"
+                + "<h2 style='color:#0f172a;margin-top:0;'>" + existing.getSubject() + "</h2>"
+                + "<p style='color:#334155;font-size:14px;line-height:1.6;'>" + existing.getBodyPreview() + "</p>"
+                + "</div>";
+
+        logRepository.delete(existing);
+        return dispatchAndRecord(
+                existing.getBrokerId(),
+                existing.getRecipientEmail(),
+                existing.getRecipientName(),
+                existing.getTemplateCode(),
+                existing.getSubject(),
+                existing.getBodyPreview(),
+                htmlBody
+        );
+    }
+
+    @Transactional
+    public EmailNotificationDto sendTestEmail(String targetEmail) {
+        String recipient = (targetEmail != null && !targetEmail.isBlank())
+                ? targetEmail.trim()
+                : "michel.silva@grupohermanos.com.br";
+
+        String subject = "🚀 [Partner Hub] Teste de Conexão SMTP / E-mail Transacional";
+        String bodyPreview = String.format(
+                "Este é um disparo de teste em tempo real do Partner Hub utilizando o servidor SMTP '%s:%d' (Remetente: %s) para validar a entrega de e-mails de Contratos e Alertas de NFS-e.",
+                this.smtpHost,
+                this.smtpPort,
+                this.fromAddress
+        );
+
+        String htmlBody = "<div style='font-family:Inter,Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;'>"
+                + "<h2 style='color:#4f46e5;margin-top:0;'>🚀 Teste de E-mail Partner Hub Concluído!</h2>"
+                + "<p style='color:#334155;font-size:14px;line-height:1.6;'>" + bodyPreview + "</p>"
+                + "<div style='background:#f8fafc;padding:14px;border-radius:8px;margin-top:16px;font-size:12px;color:#475569;'>"
+                + "<strong>Servidor SMTP:</strong> " + this.smtpHost + ":" + this.smtpPort + "<br/>"
+                + "<strong>Usuário Autenticado:</strong> " + this.smtpUsername + "<br/>"
+                + "<strong>Remetente (From):</strong> " + this.fromAddress
+                + "</div>"
+                + "</div>";
+
+        return dispatchAndRecord(
+                null,
+                recipient,
+                "Destinatário de Teste SMTP",
+                "SMTP_CONNECTION_TEST",
+                subject,
+                bodyPreview,
+                htmlBody
+        );
     }
 
     @Transactional
@@ -311,19 +408,43 @@ public class EmailNotificationService {
                 log.warn("[EmailService] Falha ao comunicar com SendGrid ({}). Registrando no Outbox.", e.getMessage());
                 status = "LOGGED_FALLBACK";
             }
-        } else if (isSmtpConfigured() && mailSender != null) {
-            try {
-                MimeMessage mimeMessage = mailSender.createMimeMessage();
-                MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
-                helper.setFrom(fromAddress);
-                helper.setTo(recipientEmail);
-                helper.setSubject(subject);
-                helper.setText(htmlBody, true);
-                mailSender.send(mimeMessage);
-                status = "SENT_SMTP_LIVE";
-            } catch (Exception e) {
-                log.warn("[EmailService] Falha ao enviar via SMTP ({}). Registrando no Outbox.", e.getMessage());
-                status = "LOGGED_FALLBACK";
+        } else if (isSmtpConfigured()) {
+            List<String> candidateUsers = new ArrayList<>();
+            candidateUsers.add(this.smtpUsername.trim());
+            if (this.fromAddress != null
+                    && !this.fromAddress.isBlank()
+                    && !this.fromAddress.trim().equalsIgnoreCase(this.smtpUsername.trim())) {
+                candidateUsers.add(this.fromAddress.trim());
+            }
+            if (this.smtpUsername.contains("@")) {
+                candidateUsers.add(this.smtpUsername.substring(0, this.smtpUsername.indexOf('@')).trim());
+            }
+
+            boolean sentOk = false;
+            String lastSmtpError = "";
+
+            outer:
+            for (String candidateUser : candidateUsers) {
+                for (boolean useStartTls : new boolean[]{true, false}) {
+                    try {
+                        sendViaJavaMail(candidateUser, useStartTls, recipientEmail, subject, htmlBody);
+                        status = "SENT_SMTP_LIVE";
+                        sentOk = true;
+                        log.info("[EmailService SMTP] E-mail enviado com sucesso via {}:{} (user={}, starttls={}) para <{}>",
+                                this.smtpHost, this.smtpPort, candidateUser, useStartTls, recipientEmail);
+                        break outer;
+                    } catch (Exception ex) {
+                        lastSmtpError = extractRootCauseMessage(ex);
+                        log.warn("[EmailService SMTP] Tentativa falhou (user={}, starttls={}): {}",
+                                candidateUser, useStartTls, lastSmtpError);
+                    }
+                }
+            }
+
+            if (!sentOk) {
+                status = "SMTP_AUTH_REJECTED";
+                bodyPreview = "[Resposta do Servidor " + this.smtpHost + ":" + this.smtpPort + " -> "
+                        + lastSmtpError + "] — " + bodyPreview;
             }
         } else {
             log.info("[EmailService Outbox] E-mail '{}' preparado e auditado para <{}>", subject, recipientEmail);
@@ -344,6 +465,55 @@ public class EmailNotificationService {
 
         EmailNotificationLog saved = logRepository.save(entity);
         return toDto(saved);
+    }
+
+    private void sendViaJavaMail(
+            String authUser,
+            boolean useStartTls,
+            String recipientEmail,
+            String subject,
+            String htmlBody
+    ) throws Exception {
+        org.springframework.mail.javamail.JavaMailSenderImpl dynamicSender =
+                new org.springframework.mail.javamail.JavaMailSenderImpl();
+        dynamicSender.setHost(this.smtpHost);
+        dynamicSender.setPort(this.smtpPort);
+        dynamicSender.setUsername(authUser);
+        dynamicSender.setPassword(this.smtpPassword);
+        dynamicSender.setDefaultEncoding("UTF-8");
+
+        Properties props = dynamicSender.getJavaMailProperties();
+        props.put("mail.transport.protocol", "smtp");
+        props.put("mail.smtp.auth", "true");
+        if (this.smtpPort == 465) {
+            props.put("mail.smtp.ssl.enable", "true");
+        } else {
+            props.put("mail.smtp.starttls.enable", String.valueOf(useStartTls));
+        }
+        props.put("mail.smtp.ssl.protocols", "TLSv1.2 TLSv1.3");
+        props.put("mail.smtp.ssl.trust", "*");
+        props.put("mail.smtp.connectiontimeout", "6000");
+        props.put("mail.smtp.timeout", "6000");
+        props.put("mail.smtp.writetimeout", "6000");
+
+        MimeMessage mimeMessage = dynamicSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, false, "UTF-8");
+        String effectiveFrom = (this.fromAddress != null && !this.fromAddress.isBlank())
+                ? this.fromAddress
+                : authUser;
+        helper.setFrom(effectiveFrom, "Partner Hub Comissoes");
+        helper.setTo(recipientEmail);
+        helper.setSubject(subject);
+        helper.setText(htmlBody, true);
+        dynamicSender.send(mimeMessage);
+    }
+
+    private String extractRootCauseMessage(Throwable t) {
+        Throwable curr = t;
+        while (curr.getCause() != null && curr.getCause() != curr) {
+            curr = curr.getCause();
+        }
+        return curr.getMessage() != null ? curr.getMessage().trim() : t.toString();
     }
 
     private EmailNotificationDto toDto(EmailNotificationLog entity) {

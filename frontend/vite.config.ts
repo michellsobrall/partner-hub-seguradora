@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: Number(process.env.VITE_PORT || fileEnv.VITE_PORT) || 5173,
       host: true,
+      allowedHosts: true,
       watch: {
         usePolling: true,
       },
